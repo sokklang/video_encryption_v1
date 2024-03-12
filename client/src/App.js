@@ -4,8 +4,8 @@ import VideoPlayer from "./VideoPlayer";
 
 const App = () => {
   return (
-    <div>
-      <h1>React HLS Player</h1>
+    <div className="text-center">
+      <h1 className="mt-5">HLS Player</h1>
       <VideoPlayer />
     </div>
   );

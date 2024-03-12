@@ -5,7 +5,7 @@ import java.nio.file.*;
 public class Server {
     public static void main(String[] args) {
         int port = 8080;
-        String host = "192.168.1.200"; // Local network IP address
+        String host = "localhost"; // Local network IP address
         try (ServerSocket serverSocket = new ServerSocket(port, 0, InetAddress.getByName(host))) {
             System.out.println("Server is running on http://" + host + ":" + port);
 
