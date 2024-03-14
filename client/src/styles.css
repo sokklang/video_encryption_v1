@@ -171,7 +171,16 @@ video {
   position: relative
 }
 
-
+.timeline .loaded-bar {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  right: calc(100% - var(--download-position));
+  background-color: rgb(8, 100, 57);
+  
+}
 
 .timeline::before {
   content: "";
@@ -183,6 +192,9 @@ video {
   background-color: rgb(150, 150, 150);
   display: none;
 }
+
+
+
 
 .timeline::after {
   content: "";
