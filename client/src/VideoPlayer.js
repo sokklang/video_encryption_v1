@@ -1,29 +1,30 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import Hls from "hls.js";
 import "./styles.css";
 
 const VideoPlayer = () => {
   const videoRef = useRef(null);
-  const hlsRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(1); // Initialize volume to 1 (100%)
+  const [volume, setVolume] = useState(1);
   const [currentTime, setCurrentTime] = useState("0:00");
   const [totalTime, setTotalTime] = useState("0:00");
+  const [progressPosition, setProgressPosition] = useState(0);
+  const [previewPosition, setPreviewPosition] = useState(0);
 
-  useEffect(() => {
-    const video = videoRef.current;
+  const handleTimelineHover = (e) => {
+    const timelineContainer = e.currentTarget;
+    const rect = timelineContainer.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
+    setPreviewPosition(percent * 100);
+  };
 
-    const updateTotalTime = () => {
-      const formattedTime = formatTime(video.duration);
-      setTotalTime(formattedTime);
-    };
-
-    video.addEventListener("durationchange", updateTotalTime);
-
-    return () => {
-      video.removeEventListener("durationchange", updateTotalTime);
-    };
+  const handleVolumeChange = useCallback((event) => {
+    const newVolume = parseFloat(event.target.value);
+    setVolume(newVolume);
+    videoRef.current.volume = newVolume;
+    videoRef.current.muted = newVolume === 0;
+    setIsMuted(videoRef.current.muted);
   }, []);
 
   useEffect(() => {
@@ -32,13 +33,40 @@ const VideoPlayer = () => {
     const updateCurrentTime = () => {
       const formattedTime = formatTime(video.currentTime);
       setCurrentTime(formattedTime);
+      const percent = (video.currentTime / video.duration) * 100;
+      setProgressPosition(percent);
+    };
+
+    const updateTotalTime = () => {
+      const formattedTime = formatTime(video.duration);
+      setTotalTime(formattedTime);
     };
 
     video.addEventListener("timeupdate", updateCurrentTime);
+    video.addEventListener("durationchange", updateTotalTime);
 
     return () => {
       video.removeEventListener("timeupdate", updateCurrentTime);
+      video.removeEventListener("durationchange", updateTotalTime);
     };
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource("http://localhost:8080/sovadart/master.m3u8");
+      hls.attachMedia(video);
+
+      return () => {
+        if (hls) {
+          hls.destroy();
+        }
+      };
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = "http://localhost:8080/sovadart/master.m3u8";
+    }
   }, []);
 
   const togglePlay = () => {
@@ -56,16 +84,15 @@ const VideoPlayer = () => {
     const video = videoRef.current;
     video.muted = !video.muted;
     setIsMuted(video.muted);
-    setVolume(video.muted ? 0 : video.volume);
+    setVolume(video.muted ? 0 : volume);
   };
 
-  const handleVolumeChange = (event) => {
+  const handleTimelineClick = (e) => {
+    const timelineContainer = e.currentTarget;
+    const rect = timelineContainer.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
     const video = videoRef.current;
-    const newVolume = parseFloat(event.target.value);
-    video.volume = newVolume;
-    setVolume(newVolume);
-    video.muted = newVolume === 0;
-    setIsMuted(video.muted);
+    video.currentTime = percent * video.duration;
   };
 
   const formatTime = (time) => {
@@ -82,34 +109,23 @@ const VideoPlayer = () => {
     return `${formattedHours}${formattedMinutes}${formattedSeconds}`;
   };
 
-  useEffect(() => {
-    const video = videoRef.current;
-
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hlsRef.current = hls;
-
-      hls.loadSource("http://localhost:8080/video/master.m3u8");
-      hls.attachMedia(video);
-
-      // Removed video.play() call
-
-      return () => {
-        if (hls) {
-          hls.destroy();
-        }
-      };
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = "http://localhost:8080/video/master.m3u8";
-      // Removed video.play() call
-    }
-  }, []);
-
   return (
     <div className="video-container paused" data-volume-level="high">
       <div className="video-controls-container">
-        <div className="timeline-container">
-          <div className="timeline"></div>
+        <div
+          className="timeline-container"
+          onMouseMove={handleTimelineHover}
+          onClick={handleTimelineClick}
+        >
+          <div
+            className="timeline"
+            style={{
+              "--progress-position": `${progressPosition}%`,
+              "--preview-position": `${previewPosition}%`,
+            }}
+          >
+            <div className="thumb-indicator"></div>
+          </div>
         </div>
         <div className="controls">
           <button onClick={togglePlay}>
@@ -156,8 +172,8 @@ const VideoPlayer = () => {
               min="0"
               max="1"
               step="any"
-              value={volume} // Bind value to volume state
-              onChange={handleVolumeChange} // Handle volume change
+              value={volume}
+              onChange={handleVolumeChange}
             />
           </div>
           <div className="duration-container">
@@ -170,12 +186,6 @@ const VideoPlayer = () => {
               <path
                 fill="currentColor"
                 d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"
-              />
-            </svg>
-            <svg className="close" viewBox="0 0 24 24">
-              <path
-                fill="currentColor"
-                d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"
               />
             </svg>
           </button>

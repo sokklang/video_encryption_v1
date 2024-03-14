@@ -49,7 +49,7 @@ video {
   content: "";
   position: absolute;
   bottom: 0;
-  
+
   width: 100%;
   aspect-ratio: 6 / 1;
   z-index: -1;
@@ -109,7 +109,6 @@ video {
 .video-container:not(.full-screen) .close {
   display: none;
 }
-
 
 
 .video-container[data-volume-level="high"] .volume-high-icon {
@@ -172,13 +171,15 @@ video {
   position: relative
 }
 
+
+
 .timeline::before {
   content: "";
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  right: calc(100% - var(--preview-position) * 100%);
+  right: calc(100% - var(--preview-position));
   background-color: rgb(150, 150, 150);
   display: none;
 }
@@ -189,7 +190,7 @@ video {
   left: 0;
   top: 0;
   bottom: 0;
-  right: calc(100% - var(--progress-position) * 100%);
+  right: calc(100% - var(--progress-position) );
   background-color: red;
 }
 
@@ -199,7 +200,7 @@ video {
   transform: translateX(-50%) scale(var(--scale));
   height: 200%;
   top: -50%;
-  left: calc(var(--progress-position) * 100%);
+  left: calc(var(--progress-position));
   background-color: red;
   border-radius: 50%;
   transition: transform 150ms ease-in-out;
@@ -212,7 +213,7 @@ video {
   aspect-ratio: 16 / 9;
   top: -1rem;
   transform: translate(-50%, -100%);
-  left: calc(var(--preview-position) * 100%);
+  left: calc(var(--preview-position));
   border-radius: .25rem;
   border: 2px solid white;
   display: none;
