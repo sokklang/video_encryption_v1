@@ -1,9 +1,8 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import Hls from "hls.js";
 import "./styles.css";
 
 const VideoPlayer = () => {
-  const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -12,6 +11,30 @@ const VideoPlayer = () => {
   const [progressPosition, setProgressPosition] = useState(0);
   const [previewPosition, setPreviewPosition] = useState(0);
   const [bufferedPercentage, setBufferedPercentage] = useState(0);
+  const [isBuffering, setIsBuffering] = useState(false);
+  //const [waitingBufferPercentage, setWaitingBufferPercentage] = useState(0);
+
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+
+    const handleWaiting = () => {
+      setIsBuffering(true);
+    };
+
+    const handlePlaying = () => {
+      setIsBuffering(false);
+    };
+
+    video.addEventListener("waiting", handleWaiting);
+    video.addEventListener("playing", handlePlaying);
+
+    return () => {
+      video.removeEventListener("waiting", handleWaiting);
+      video.removeEventListener("playing", handlePlaying);
+    };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -21,6 +44,7 @@ const VideoPlayer = () => {
       const duration = video.duration;
       const percentage = (currentTime / duration) * 100;
       setProgressPosition(percentage);
+      setCurrentTime(formatTime(currentTime));
     };
 
     const updateBuffered = () => {
@@ -40,39 +64,45 @@ const VideoPlayer = () => {
       setBufferedPercentage(percentage);
     };
 
-    const updateCurrentTime = () =>
-      setCurrentTime(formatTime(video.currentTime));
     const updateTotalTime = () => setTotalTime(formatTime(video.duration));
 
     video.addEventListener("timeupdate", updateTime);
     video.addEventListener("progress", updateBuffered);
-    video.addEventListener("timeupdate", updateCurrentTime);
     video.addEventListener("durationchange", updateTotalTime);
 
     return () => {
       video.removeEventListener("timeupdate", updateTime);
       video.removeEventListener("progress", updateBuffered);
-      video.removeEventListener("timeupdate", updateCurrentTime);
       video.removeEventListener("durationchange", updateTotalTime);
     };
   }, []);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource("http://localhost:8080/video/master.m3u8");
-      hls.attachMedia(video);
-      return () => hls.destroy();
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = "http://localhost:8080/video/master.m3u8";
-    }
+    const handleVideoSource = () => {
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource("http://localhost:8080/video/master.m3u8");
+        hls.attachMedia(video);
+        return () => hls.destroy();
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = "http://localhost:8080/video/master.m3u8";
+      }
+    };
+    handleVideoSource();
   }, []);
 
-  const handleTimelineHover = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    setPreviewPosition(percent * 100);
+  const formatTime = (time) => {
+    const formattedHours = Math.floor(time / 3600)
+      .toString()
+      .padStart(2, "0");
+    const formattedMinutes = Math.floor((time % 3600) / 60)
+      .toString()
+      .padStart(2, "0");
+    const formattedSeconds = Math.floor(time % 60)
+      .toString()
+      .padStart(2, "0");
+    return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
   };
 
   const togglePlay = () => {
@@ -93,13 +123,6 @@ const VideoPlayer = () => {
     setVolume(video.muted ? 0 : volume);
   };
 
-  const handleTimelineClick = (e) => {
-    const percent =
-      (e.clientX - e.currentTarget.getBoundingClientRect().left) /
-      e.currentTarget.getBoundingClientRect().width;
-    videoRef.current.currentTime = percent * videoRef.current.duration;
-  };
-
   const handleVolumeChange = (event) => {
     const newVolume = parseFloat(event.target.value);
     setVolume(newVolume);
@@ -108,17 +131,20 @@ const VideoPlayer = () => {
     setIsMuted(videoRef.current.muted);
   };
 
-  const formatTime = (time) => {
-    const hours = Math.floor(time / 3600);
-    const minutes = Math.floor((time % 3600) / 60);
-    const seconds = Math.floor(time % 60);
-    const formattedHours = hours > 0 ? `${hours}:` : "";
-    const formattedMinutes = `${
-      minutes < 10 && hours > 0 ? "0" : ""
-    }${minutes}:`;
-    const formattedSeconds = `${seconds < 10 ? "0" : ""}${seconds}`;
-    return `${formattedHours}${formattedMinutes}${formattedSeconds}`;
-  };
+  const handleTimelineHover = useCallback((e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
+    setPreviewPosition(percent * 100);
+  }, []);
+
+  const handleTimelineClick = useCallback((e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left;
+    const timelineWidth = rect.width;
+    const percent = (clickPosition / timelineWidth) * 100;
+    setProgressPosition(percent);
+    videoRef.current.currentTime = (percent / 100) * videoRef.current.duration;
+  }, []);
 
   return (
     <div className="video-container paused" data-volume-level="high">
@@ -197,6 +223,10 @@ const VideoPlayer = () => {
         </div>
       </div>
       <video ref={videoRef}></video>
+      <div className={`loading-spinner ${isBuffering ? "visible" : ""}`}>
+        <div className="spinner"></div>
+        <div className="spinner-text"></div>
+      </div>
     </div>
   );
 };
