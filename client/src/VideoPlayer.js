@@ -12,9 +12,54 @@ const VideoPlayer = () => {
   const [previewPosition, setPreviewPosition] = useState(0);
   const [bufferedPercentage, setBufferedPercentage] = useState(0);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   //const [waitingBufferPercentage, setWaitingBufferPercentage] = useState(0);
 
   const videoRef = useRef(null);
+  const videoContainerRef = useRef(null);
+
+  const toggleFullscreen = () => {
+    console.log("Toggle fullscreen function called");
+
+    const elem = videoContainerRef.current;
+
+    if (!isFullscreen) {
+      console.log("Entering fullscreen mode");
+      if (elem.requestFullscreen) {
+        console.log("Requesting fullscreen");
+        elem.requestFullscreen();
+      } else if (elem.mozRequestFullScreen) {
+        console.log("Requesting fullscreen (Mozilla)");
+        elem.mozRequestFullScreen();
+      } else if (elem.webkitRequestFullscreen) {
+        console.log("Requesting fullscreen (WebKit)");
+        elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) {
+        console.log("Requesting fullscreen (MS)");
+        elem.msRequestFullscreen();
+      }
+      elem.classList.add("full-screen");
+    } else {
+      console.log("Exiting fullscreen mode");
+      if (document.exitFullscreen) {
+        console.log("Exiting fullscreen (Standard)");
+        document.exitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        console.log("Exiting fullscreen (Mozilla)");
+        document.mozCancelFullScreen();
+      } else if (document.webkitExitFullscreen) {
+        console.log("Exiting fullscreen (WebKit)");
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        console.log("Exiting fullscreen (MS)");
+        document.msExitFullscreen();
+      }
+      elem.classList.remove("full-screen");
+    }
+
+    setIsFullscreen(!isFullscreen);
+  };
 
   useEffect(() => {
     const video = videoRef.current;
@@ -107,12 +152,15 @@ const VideoPlayer = () => {
 
   const togglePlay = () => {
     const video = videoRef.current;
+    const elem = videoContainerRef.current;
     if (video.paused) {
       video.play();
       setIsPlaying(true);
+      elem.classList.remove("paused");
     } else {
       video.pause();
       setIsPlaying(false);
+      elem.classList.add("paused");
     }
   };
 
@@ -147,7 +195,11 @@ const VideoPlayer = () => {
   }, []);
 
   return (
-    <div className="video-container paused" data-volume-level="high">
+    <div
+      ref={videoContainerRef}
+      className="video-container paused"
+      data-volume-level="high"
+    >
       <div className="video-controls-container">
         <div
           className="timeline-container"
@@ -212,17 +264,23 @@ const VideoPlayer = () => {
             <div className="current-time">{currentTime}</div>/
             <div className="total-time">{totalTime}</div>
           </div>
-          <button className="full-screen-btn">
+          <button className="full-screen-btn" onClick={toggleFullscreen}>
             <svg className="open" viewBox="0 0 24 24">
               <path
                 fill="currentColor"
                 d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"
               />
             </svg>
+            <svg className="close" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"
+              />
+            </svg>
           </button>
         </div>
       </div>
-      <video ref={videoRef}></video>
+      <video ref={videoRef} src="Video.mp4"></video>
       <div className={`loading-spinner ${isBuffering ? "visible" : ""}`}>
         <div className="spinner"></div>
         <div className="spinner-text"></div>

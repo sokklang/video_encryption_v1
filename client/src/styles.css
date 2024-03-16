@@ -16,14 +16,9 @@ body {
   background-color: black;
 }
 
-.video-container.theater,
 .video-container.full-screen {
   max-width: initial;
   width: 100%;
-}
-
-.video-container.theater {
-  max-height: 90vh;
 }
 
 .video-container.full-screen {
@@ -45,13 +40,15 @@ video {
   transition: opacity 150ms ease-in-out;
 }
 
+
 .video-controls-container::before {
   content: "";
   position: absolute;
+  left: 0;
   bottom: 0;
-
+  background: linear-gradient(to top, rgba(0, 0, 0, .75), transparent);
   width: 100%;
-  aspect-ratio: 6 / 1;
+  aspect-ratio: 6/1;
   z-index: -1;
   pointer-events: none;
 }
@@ -62,12 +59,14 @@ video {
   opacity: 1;
 }
 
+
 .video-controls-container .controls {
   display: flex;
   gap: .5rem;
   padding: .25rem;
   align-items: center;
 }
+
 
 .video-controls-container .controls button {
   background: none;
@@ -94,13 +93,6 @@ video {
   display: none;
 }
 
-.video-container.theater .tall {
-  display: none;
-}
-
-.video-container:not(.theater) .wide {
-  display: none;
-}
 
 .video-container.full-screen .open {
   display: none;
@@ -108,19 +100,6 @@ video {
 
 .video-container:not(.full-screen) .close {
   display: none;
-}
-
-
-.video-container[data-volume-level="high"] .volume-high-icon {
-  display: block;
-}
-
-.video-container[data-volume-level="low"] .volume-low-icon {
-  display: block;
-}
-
-.video-container[data-volume-level="muted"] .volume-muted-icon {
-  display: block;
 }
 
 .volume-container {
@@ -148,13 +127,6 @@ video {
   flex-grow: 1;
 }
 
-.video-container.captions .captions-btn {
-  border-bottom: 3px solid red;
-}
-
-.video-controls-container .controls button.wide-btn {
-  width: 50px;
-}
 
 .timeline-container {
   height: 7px;
@@ -219,37 +191,7 @@ video {
   aspect-ratio: 1 / 1;
 }
 
-.timeline .preview-img {
-  position: absolute;
-  height: 80px;
-  aspect-ratio: 16 / 9;
-  top: -1rem;
-  transform: translate(-50%, -100%);
-  left: calc(var(--preview-position));
-  border-radius: .25rem;
-  border: 2px solid white;
-  display: none;
-}
 
-.thumbnail-img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  display: none;
-}
-
-.video-container.scrubbing .thumbnail-img {
-  display: block;
-}
-
-.video-container.scrubbing .preview-img,
-.timeline-container:hover .preview-img {
-  display: block;
-}
 
 .video-container.scrubbing .timeline::before,
 .timeline-container:hover .timeline::before {
@@ -260,6 +202,7 @@ video {
 .timeline-container:hover .thumb-indicator {
   --scale: 1;
 }
+
 
 .video-container.scrubbing .timeline,
 .timeline-container:hover .timeline {
