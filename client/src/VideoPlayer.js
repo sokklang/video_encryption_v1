@@ -305,6 +305,7 @@ const VideoPlayer = () => {
             <div className="current-time">{currentTime}</div>/
             <div className="total-time">{totalTime}</div>
           </div>
+
           <button className="full-screen-btn" onClick={toggleFullscreen}>
             <svg className="open" viewBox="0 0 24 24">
               <path
@@ -321,7 +322,11 @@ const VideoPlayer = () => {
           </button>
         </div>
       </div>
-      <video ref={videoRef}></video>
+      <video
+        ref={videoRef}
+        onClick={togglePlay}
+        onDoubleClick={toggleFullscreen}
+      ></video>
       <div className={`loading-spinner ${isBuffering ? "visible" : ""}`}>
         <div className="spinner"></div>
         <div className="spinner-text"></div>
