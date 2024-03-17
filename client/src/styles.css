@@ -102,6 +102,27 @@ video {
   display: none;
 }
 
+.volume-high-icon,
+.volume-low-icon,
+.volume-muted-icon {
+  display: none;
+}
+
+.video-container[data-volume-level="high"] .volume-high-icon {
+  display: block;
+}
+
+.video-container[data-volume-level="low"] .volume-low-icon {
+  display: block;
+}
+
+.video-container[data-volume-level="muted"] .volume-muted-icon {
+  display: block;
+}
+
+
+
+
 .volume-container {
   display: flex;
   align-items: center;
@@ -164,8 +185,6 @@ video {
   background-color: rgb(150, 150, 150);
   display: none;
 }
-
-
 
 
 .timeline::after {
