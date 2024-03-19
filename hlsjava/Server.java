@@ -1,22 +1,28 @@
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server {
+    private static final int PORT = 8080;
+    private static final String HOST = "192.168.1.200";
+    private static final int THREAD_POOL_SIZE = 10;
+
     public static void main(String[] args) {
-        int port = 8080;
-        String host = "localhost"; // Local network IP address
-        try (ServerSocket serverSocket = new ServerSocket(port, 0, InetAddress.getByName(host))) {
-            System.out.println("Server is running on http://" + host + ":" + port);
+        ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+
+        try (ServerSocket serverSocket = new ServerSocket(PORT, 0, InetAddress.getByName(HOST))) {
+            System.out.println("Server is running on http://" + HOST + ":" + PORT);
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                HttpRequestHandler requestHandler = new HttpRequestHandler(clientSocket);
-                Thread thread = new Thread(requestHandler);
-                thread.start();
+                executor.submit(new HttpRequestHandler(clientSocket));
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            executor.shutdown();
         }
     }
 
@@ -30,19 +36,19 @@ public class Server {
         @Override
         public void run() {
             try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                    OutputStream out = clientSocket.getOutputStream()) {
+                    BufferedOutputStream out = new BufferedOutputStream(clientSocket.getOutputStream())) {
 
-                String request = in.readLine();
-                log("Incoming request: " + request); // Log incoming request
+                String requestLine = in.readLine();
+                log("Incoming request: " + requestLine);
 
-                String[] parts = request.split(" ");
+                String[] parts = requestLine.split(" ");
                 String method = parts[0];
                 String uri = parts[1];
 
-                if (method.equals("GET")) {
+                if ("GET".equals(method)) {
                     serveFile(uri, out);
                 } else {
-                    out.write("HTTP/1.1 405 Method Not Allowed\r\n\r\n".getBytes());
+                    sendResponse(out, "HTTP/1.1 405 Method Not Allowed\r\n\r\n".getBytes());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -55,25 +61,27 @@ public class Server {
             }
         }
 
-        private void serveFile(String uri, OutputStream out) throws IOException {
+        private void serveFile(String uri, BufferedOutputStream out) throws IOException {
             try {
                 File file = new File("public" + uri);
                 if (file.exists() && !file.isDirectory()) {
                     byte[] content = Files.readAllBytes(file.toPath());
-                    out.write("HTTP/1.1 200 OK\r\n".getBytes());
-                    out.write("Access-Control-Allow-Origin: *\r\n".getBytes()); // Allow all origins
-                    out.write(("Content-Length: " + content.length + "\r\n").getBytes());
-                    out.write("\r\n".getBytes());
+                    sendResponse(out, ("HTTP/1.1 200 OK\r\n" +
+                            "Access-Control-Allow-Origin: *\r\n" +
+                            "Content-Length: " + content.length + "\r\n" +
+                            "\r\n").getBytes());
                     out.write(content);
                 } else {
-                    out.write("HTTP/1.1 404 Not Found\r\n".getBytes());
-                    out.write("Access-Control-Allow-Origin: *\r\n".getBytes()); // Allow all origins
-                    out.write("\r\n".getBytes());
+                    sendResponse(out, "HTTP/1.1 404 Not Found\r\nAccess-Control-Allow-Origin: *\r\n\r\n".getBytes());
                 }
             } catch (SocketException e) {
-                // Handle socket exception
                 e.printStackTrace();
             }
+        }
+
+        private void sendResponse(BufferedOutputStream out, byte[] response) throws IOException {
+            out.write(response);
+            out.flush();
         }
 
         private void log(String message) {

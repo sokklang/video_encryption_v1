@@ -129,13 +129,16 @@ video {
 .volume-container {
   display: flex;
   align-items: center;
+  
 }
+
 
 .volume-slider {
   width: 0;
   transform-origin: left;
   transform: scaleX(0);
-  transition: width 150ms ease-in-out, transform 150ms ease-in-out;
+  transition: width 150ms ease-in-out, transform 150ms ease-in-out; 
+  
 }
 
 .volume-container:hover .volume-slider,
@@ -214,6 +217,24 @@ video {
 }
 
 
+.hover-time-indicator {
+  display: none; /* Initially hide the indicator */
+  position: absolute;
+  font-size: 15px;
+  top: -35px; /* Adjust this value as needed */
+  transform: translateX(-50%);
+  left: calc(max(5%, min(95%, var(--preview-position))));
+  background-color: transparent;
+  padding: 4px; /* Example padding */
+  border-radius: 4px; /* Example border-radius */
+  color: white; 
+}
+
+.timeline:hover .hover-time-indicator {
+  display: block; /* Display the indicator when hovering over the timeline */
+}
+
+
 
 .video-container.scrubbing .timeline::before,
 .timeline-container:hover .timeline::before {
@@ -259,3 +280,45 @@ video {
     transform: rotate(360deg);
   }
 }
+
+.forward-button, .backward-button, .full-screen-btn, .mute-btn, .volume-slider, .setting-button {
+  position: relative; /* Set the button's position to relative */
+}
+
+
+
+.forward-button:hover::before, .backward-button:hover::before , .mute-btn:hover::before ,.full-screen-btn:hover::before, .volume-slider:hover::before , .setting-button:hover::before {
+
+  font-size: 12px;
+  background-color: #333; /* Background color of the tooltip */
+  color: #fff; /* Text color of the tooltip */
+  padding: 5px 10px; /* Padding inside the tooltip */
+  border-radius: 4px; /* Border radius of the tooltip */
+  position: absolute; /* Position the tooltip absolutely */
+  top: -50px; /* Position the tooltip above the button */
+  left: 50%; /* Center the tooltip horizontally */
+  transform: translateX(-50%); /* Center the tooltip horizontally */
+  z-index: 1; /* Ensure the tooltip is above other elements */
+  opacity: 0; /* Initially hide the tooltip */
+  transition: opacity 0.3s; /* Add a transition effect for opacity */
+  white-space: nowrap; /* Prevent text wrapping */
+}
+
+.full-screen-btn:hover::before {
+  transform: translateX(-85%); /* Adjusted translation to move it slightly to the left */
+}
+
+.volume-slider:hover::before {top: -57px}
+
+.forward-button:hover::before, .backward-button:hover::before, .mute-btn:hover::before, .full-screen-btn:hover::before, .volume-slider:hover::before, .setting-button:hover::before  {
+  opacity: 1; /* Show the tooltip when hovering */
+}
+
+.setting-button:hover::before{content: "Setting";}
+.volume-slider:hover::before {content: "Volume";}
+.mute-btn:hover::before{content: "Mute (m)";}
+.forward-button:hover::before {content: "Forward (l)";}
+.backward-button:hover::before {content: "Backward (j)";}
+.full-screen-btn:hover::before{content: "Fullscreen (f)";}
+
+

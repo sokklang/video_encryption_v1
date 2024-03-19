@@ -9,11 +9,28 @@ const VideoPlayer = () => {
   const [previewPosition, setPreviewPosition] = useState(0);
   const [bufferedPercentage, setBufferedPercentage] = useState(0);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [hoveredTime, setHoveredTime] = useState("");
+
   //const [waitingBufferPercentage, setWaitingBufferPercentage] = useState(0);
 
   const videoRef = useRef(null);
   const videoContainerRef = useRef(null);
   const volumeSliderRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const handleVideoSource = () => {
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource("http://192.168.1.200:8080/video/master.m3u8");
+        hls.attachMedia(video);
+        return () => hls.destroy();
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = "http://192.168.1.200:8080/video/master.m3u8";
+      }
+    };
+    handleVideoSource();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -57,27 +74,36 @@ const VideoPlayer = () => {
     };
   }, []);
 
-  const skip = (duration) => {
+  useEffect(() => {
     const video = videoRef.current;
-    video.currentTime += duration;
-  };
+    const volumeSlider = volumeSliderRef.current;
+    const videoContainer = videoContainerRef.current;
 
-  const toggleFullscreen = () => {
-    const elem = videoContainerRef.current;
+    const handleVolumeChange = () => {
+      volumeSlider.value = video.volume;
+      let volumeLevel;
+      if (video.muted || video.volume === 0) {
+        volumeSlider.value = 0;
+        volumeLevel = "muted";
+      } else if (video.volume >= 0.5) {
+        volumeLevel = "high";
+      } else {
+        volumeLevel = "low";
+      }
+      videoContainer.dataset.volumeLevel = volumeLevel;
+    };
 
-    if (document.fullscreenElement == null) {
-      elem.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
-  };
+    video.addEventListener("volumechange", handleVolumeChange);
 
-  document.addEventListener("fullscreenchange", () => {
-    const elem = videoContainerRef.current;
-    if (elem) {
-      elem.classList.toggle("full-screen", document.fullscreenElement);
-    }
-  });
+    volumeSlider.addEventListener("input", (e) => {
+      video.volume = e.target.value;
+      video.muted = e.target.value === "0";
+    });
+
+    return () => {
+      video.removeEventListener("volumechange", handleVolumeChange);
+    };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -140,20 +166,27 @@ const VideoPlayer = () => {
     };
   }, []);
 
-  useEffect(() => {
+  const toggleFullscreen = () => {
+    const elem = videoContainerRef.current;
+
+    if (document.fullscreenElement == null) {
+      elem.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  document.addEventListener("fullscreenchange", () => {
+    const elem = videoContainerRef.current;
+    if (elem) {
+      elem.classList.toggle("full-screen", document.fullscreenElement);
+    }
+  });
+
+  const skip = (duration) => {
     const video = videoRef.current;
-    const handleVideoSource = () => {
-      if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource("http://localhost:8080/video/master.m3u8");
-        hls.attachMedia(video);
-        return () => hls.destroy();
-      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = "http://localhost:8080/video/master.m3u8";
-      }
-    };
-    handleVideoSource();
-  }, []);
+    video.currentTime += duration;
+  };
 
   const formatTime = (time) => {
     const formattedHours = Math.floor(time / 3600)
@@ -187,41 +220,12 @@ const VideoPlayer = () => {
     video.muted = !video.muted;
   };
 
-  useEffect(() => {
-    const video = videoRef.current;
-    const volumeSlider = volumeSliderRef.current;
-    const videoContainer = videoContainerRef.current;
-
-    const handleVolumeChange = () => {
-      volumeSlider.value = video.volume;
-      let volumeLevel;
-      if (video.muted || video.volume === 0) {
-        volumeSlider.value = 0;
-        volumeLevel = "muted";
-      } else if (video.volume >= 0.5) {
-        volumeLevel = "high";
-      } else {
-        volumeLevel = "low";
-      }
-      videoContainer.dataset.volumeLevel = volumeLevel;
-    };
-
-    video.addEventListener("volumechange", handleVolumeChange);
-
-    volumeSlider.addEventListener("input", (e) => {
-      video.volume = e.target.value;
-      video.muted = e.target.value === "0";
-    });
-
-    return () => {
-      video.removeEventListener("volumechange", handleVolumeChange);
-    };
-  }, []);
-
   const handleTimelineHover = useCallback((e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
     setPreviewPosition(percent * 100);
+    const hoverTime = (percent * videoRef.current.duration).toFixed(2); // Calculate the time based on hover position
+    setHoveredTime(formatTime(hoverTime)); // Format and set hovered time
   }, []);
 
   const handleTimelineClick = useCallback((e) => {
@@ -259,6 +263,9 @@ const VideoPlayer = () => {
               }}
             ></div>
             <div className="thumb-indicator"></div>
+            {hoveredTime && (
+              <div className="hover-time-indicator">{hoveredTime}</div>
+            )}
           </div>
         </div>
         <div className="controls">
@@ -298,6 +305,7 @@ const VideoPlayer = () => {
               min="0"
               max="1"
               step="any"
+
               //onChange={handleVolumeChange}
             />
           </div>
@@ -305,11 +313,45 @@ const VideoPlayer = () => {
             <div className="current-time">{currentTime}</div>/
             <div className="total-time">{totalTime}</div>
           </div>
+
+          <button
+            className="backward-button"
+            onClick={() => {
+              skip(-5);
+            }}
+          >
+            <svg
+              className="backward"
+              viewBox="0 0 512 512"
+              onClick={() => {
+                skip(-5);
+              }}
+            >
+              <path
+                fill="currentColor"
+                d="M342 108.32c7.6-6.32 18.24-7.76 27.28-3.52S384 118.08 384 128L384 384C384 393.92 378.24 402.96 369.28 407.2s-19.6 2.88-27.28-3.52l-153.6-128L179.2 268 179.2 384c0 14.16-11.44 25.6-25.6 25.6s-25.6-11.44-25.6-25.6L128 128c0-14.16 11.44-25.6 25.6-25.6s25.6 11.44 25.6 25.6L179.2 244l9.2-7.68 153.6-128z"
+              ></path>
+            </svg>
+          </button>
+          <button
+            className="forward-button"
+            onClick={() => {
+              skip(5);
+            }}
+          >
+            <svg className="forward" viewBox="0 0 512 512">
+              <path
+                fill="currentColor"
+                d="M170 403.68c-7.6 6.32-18.24 7.76-27.28 3.52S128 393.92 128 384V128C128 118.08 133.76 109.04 142.72 104.8s19.6-2.88 27.28 3.52l153.6 128L332.8 244V128c0-14.16 11.44-25.6 25.6-25.6s25.6 11.44 25.6 25.6V384c0 14.16-11.44 25.6-25.6 25.6s-25.6-11.44-25.6-25.6V268l-9.2 7.68-153.6 128z"
+              ></path>
+            </svg>
+          </button>
+
           <button className="setting-button">
             <svg className="setting" viewBox="0 0 512 512">
               <path
                 fill="currentColor"
-                d="M435.925 188.987c2.4 6.525.375 13.8-4.8 18.45l-32.475 29.55c.825 6.225 1.275 12.6 1.275 19.05s-.45 12.825-1.275 19.05l32.475 29.55c5.175 4.65 7.2 11.925 4.8 18.45-3.3 8.925-7.275 17.475-11.85 25.725l-3.525 6.075c-4.95 8.25-10.5 16.05-16.575 23.4-4.425 5.4-11.775 7.2-18.375 5.1l-41.775-13.275c-10.05 7.725-21.15 14.175-33 19.05l-9.375 42.825c-1.5 6.825-6.75 12.225-13.65 13.35-10.35 1.725-21 2.625-31.875 2.625s-21.525-.9-31.875-2.625c-6.9-1.125-12.15-6.525-13.65-13.35l-9.375-42.825c-11.85-4.875-22.95-11.325-33-19.05L126.325 383.463c-6.6 2.1-13.95.225-18.375-5.1-6.075-7.35-11.625-15.15-16.575-23.4l-3.525-6.075c-4.575-8.25-8.55-16.8-11.85-25.725-2.4-6.525-.375-13.8 4.8-18.45l32.475-29.55C112.45 268.862 112 262.487 112 256.037s.45-12.825 1.275-19.05L80.8 207.437c-5.175-4.65-7.2-11.925-4.8-18.45 3.3-8.925 7.275-17.475 11.85-25.725l3.525-6.075c4.95-8.25 10.5-16.05 16.575-23.4 4.425-5.4 11.775-7.2 18.375-5.1l41.775 13.275c10.05-7.725 21.15-14.175 33-19.05l9.375-42.825c1.5-6.825 6.75-12.225 13.65-13.35C234.475 64.937 245.125 64.037 256 64.037s21.525.9 31.875 2.625c6.9 1.125 12.15 6.525 13.65 13.35l9.375 42.825c11.85 4.875 22.95 11.325 33 19.05l41.775-13.275c6.6-2.1 13.95-.225 18.375 5.1 6.075 7.35 11.625 15.15 16.575 23.4l3.525 6.075c4.575 8.25 8.55 16.8 11.85 25.725zM256 316.037a60 60 0 1 0 0-120 60 60 0 1 0 0 120z"
+                d="M399.993 202.37c1.921 5.222.3 11.044-3.841 14.765l-25.99 23.649c.66 4.982 1.02 10.084 1.02 15.246s-.36 10.264-1.02 15.246l25.99 23.649c4.142 3.721 5.762 9.543 3.841 14.765-2.641 7.143-5.822 13.985-9.483 20.588l-2.821 4.862c-3.961 6.602-8.403 12.845-13.265 18.727-3.541 4.322-9.423 5.762-14.705 4.081l-33.432-10.624c-8.043 6.182-16.926 11.344-26.41 15.246l-7.503 34.273c-1.2 5.462-5.402 9.784-10.924 10.684-8.283 1.381-16.806 2.101-25.509 2.101s-17.226-.72-25.509-2.101c-5.522-.9-9.724-5.222-10.924-10.684l-7.503-34.273c-9.483-3.901-18.367-9.063-26.41-15.246L152.222 358.008c-5.282 1.681-11.164.18-14.705-4.081-4.862-5.882-9.303-12.124-13.265-18.727l-2.821-4.862c-3.661-6.602-6.843-13.445-9.483-20.588-1.921-5.222-.3-11.044 3.841-14.765l25.99-23.649C141.118 266.294 140.758 261.192 140.758 256.03s.36-10.264 1.02-15.246L115.789 217.136c-4.142-3.721-5.762-9.543-3.841-14.765 2.641-7.143 5.822-13.985 9.483-20.588l2.821-4.862c3.961-6.602 8.403-12.845 13.265-18.727 3.541-4.322 9.423-5.762 14.705-4.081l33.432 10.624c8.043-6.182 16.926-11.344 26.41-15.246l7.503-34.273c1.2-5.462 5.402-9.784 10.924-10.684C238.774 103.094 247.297 102.374 256 102.374s17.226.72 25.509 2.101c5.522.9 9.724 5.222 10.924 10.684l7.503 34.273c9.483 3.901 18.367 9.063 26.41 15.246l33.432-10.624c5.282-1.681 11.164-.18 14.705 4.081 4.862 5.882 9.303 12.124 13.265 18.727l2.821 4.862c3.661 6.602 6.843 13.445 9.483 20.588zM256 304.048a48.018 48.018 0 1 0 0-96.035 48.018 48.018 0 1 0 0 96.035z"
               ></path>
             </svg>
           </button>
